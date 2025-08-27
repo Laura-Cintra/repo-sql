@@ -215,4 +215,40 @@ SELECT * FROM cp4_veiculo;
 
 -- Function 1 - Crie uma função que receba o código de um veículo como parâmetro e retorne o total de dias que ele foi alugado, somando o intervalo entre a data de retirada e devolução de todas as suas reservas.
 
+CREATE OR REPLACE FUNCTION fun_calc_dias_alugado (
+    p_cod IN INTEGER
+) RETURN INTEGER IS
+    v_total INTEGER;
+BEGIN
+    SELECT SUM(a.dt_devolucao - a.dt_retirada)
+    INTO v_total
+    FROM cp4_reserva a
+    WHERE a.cod_veic = p_cod;
+
+    IF v_total IS NULL THEN
+        v_total := 0;
+    END IF;
+
+    RETURN v_total;
+END;
+
+SELECT fun_calc_dias_alugado(1000) AS total_dias FROM DUAL;
+
 -- Function 2 - Crie uma função que receba o código de uma marca como parâmetro e retorne a quantidade total de reservas feitas para veículos dessa marca
+
+CREATE OR REPLACE FUNCTION func_calc_reservas_marca (
+    p_cod IN INTEGER
+) RETURN INTEGER IS
+    v_total INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_total
+    FROM cp4_reserva a
+    INNER JOIN cp4_veiculo b ON a.cod_veic = b.cod_veic
+    INNER JOIN cp4_modelo c ON b.cod_modelo = c.cod_modelo
+    WHERE c.cod_marca = p_cod;
+
+    RETURN v_total;
+END;
+
+SELECT func_calc_reservas_marca(1) AS quantidade_reservas FROM DUAL;
