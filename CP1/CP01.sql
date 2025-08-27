@@ -101,9 +101,118 @@ SELECT * FROM cp4_RESERVA;
 
 ---------------------------------------------------------------------------------
 
--- Consulta 1: Média de renda dos clientes que reservaram veículos do modelo Celta
--- Consulta 2: Consultar os clientes que reservaram veículos da marca Chevrolet
--- Consulta 3: Liste a marca e modelo dos veículos reservados por clientes com idade entre 30 e 40 anos
--- Consulta 4: Listar todos os veículos que não têm nenhuma reserva associada, mostrando sua marca e modelo
+-- Consulta 1 – Liste os modelos de veículos que foram alugados mais de uma vez. Mostre o nome do modelo e a quantidade de vezes que ele foi reservado.
 
--- Procedure 1: Relatório de reserva feitas em 2012 (Nome do cliente, data da reserva, marca e modelo do veículo reservado)
+SELECT
+    nome_modelo,
+    total_reservas
+FROM (
+    SELECT 
+        c.nome_modelo,
+        COUNT(a.cod_reserva) AS total_reservas
+    FROM cp4_reserva a
+    INNER JOIN cp4_veiculo b ON b.cod_veic = a.cod_veic
+    INNER JOIN cp4_modelo c ON c.cod_modelo = b.cod_modelo
+    GROUP BY c.nome_modelo
+)
+WHERE total_reservas > 1;
+
+-- Consulta 2 – Liste os nomes dos clientes que já fizeram reservas de veículos da marca Chevrolet. Mostre também o nome do modelo e a data da reserva.
+
+SELECT
+    b.nome_cli,
+    e.nome_marca,
+    d.nome_modelo,
+    a.dt_reserva
+FROM cp4_reserva a
+    INNER JOIN cp4_cliente b ON b.cod_cli = a.cod_cli
+    INNER JOIN cp4_veiculo c ON a.cod_veic = c.cod_veic
+    INNER JOIN cp4_modelo  d ON c.cod_modelo = d.cod_modelo
+    INNER JOIN cp4_marca   e ON d.cod_marca = e.cod_marca
+WHERE
+    e.nome_marca = 'Chevrolet';
+
+-- Consulta 3 – Liste a marca e o modelo dos veículos que foram reservados por clientes com idade entre 20 e 30 anos. Indicar qual cliente fez a reserva e qual veículo foi alugado.
+
+SELECT
+    e.nome_marca,
+    d.nome_modelo,
+    a.nome_cli,
+    c.placa_veic
+FROM cp4_cliente a
+    LEFT JOIN cp4_reserva b ON a.cod_cli = b.cod_cli
+    LEFT JOIN cp4_veiculo c ON b.cod_veic = c.cod_veic
+    LEFT JOIN cp4_modelo  d ON c.cod_modelo = d.cod_modelo
+    LEFT JOIN cp4_marca   e ON d.cod_marca = e.cod_marca
+WHERE
+    a.idade BETWEEN 20 AND 30;
+
+-- Consulta 4 - Liste todos os veículos que nunca foram reservados, incluindo para cada um deles: a placa, o modelo e a marca
+
+SELECT
+    b.placa_veic,
+    c.nome_modelo,
+    d.nome_marca
+FROM cp4_reserva a
+    RIGHT JOIN cp4_veiculo b ON b.cod_veic = a.cod_veic
+    INNER JOIN cp4_modelo  c ON c.cod_modelo = b.cod_modelo
+    INNER JOIN cp4_marca   d ON d.cod_marca = c.cod_marca
+WHERE
+    a.cod_reserva IS NULL;
+
+-- Procedure 1 – Crie uma procedure que receba o código de um cliente como parâmetro e exiba o relatório com: nome do cliente, data da reserva, nome do modelo e marca do veículo reservado.
+
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE PROCEDURE prc_relatorio_cliente (
+    p_cod IN INTEGER
+) AS 
+BEGIN
+    FOR i IN (
+        SELECT 
+            a.nome_cli,
+            b.dt_reserva,
+            d.nome_modelo,
+            e.nome_marca
+        FROM cp4_cliente a
+        INNER JOIN cp4_reserva b ON a.cod_cli = b.cod_cli
+        INNER JOIN cp4_veiculo c ON b.cod_veic = c.cod_veic
+        INNER JOIN cp4_modelo d ON c.cod_modelo = d.cod_modelo
+        INNER JOIN cp4_marca e ON d.cod_marca = e.cod_marca
+        WHERE a.cod_cli = p_cod
+    ) LOOP
+        dbms_output.put_line('=== Relatório === ');
+        dbms_output.put_line('');
+        dbms_output.put_line('Cliente: ' || i.nome_cli);
+        dbms_output.put_line('Data Reserva: ' || i.dt_reserva);
+        dbms_output.put_line('Modelo: ' || i.nome_modelo);
+        dbms_output.put_line('Marca: ' || i.nome_marca);
+    END LOOP;
+END;
+
+CALL prc_relatorio_cliente(201);
+
+-- Procedure 2 - Crie uma procedure que receba uma data de devolução como parâmetro. Para todas as reservas com data de devolução igual ou anterior à informada, a procedure deve atualizar o campo disponibilidade dos veículos correspondentes para 'S' (disponível).
+
+-- Dados para teste
+INSERT INTO cp4_veiculo (cod_veic, placa_veic, disponibilidade, cod_modelo) VALUES (1007, 'ABC-1234', 'N', 104);
+INSERT INTO cp4_reserva (cod_reserva, cod_veic, cod_cli, dt_retirada, dt_devolucao, dt_reserva, valor) VALUES (10, 1007, 202, TO_DATE('10/03/2013','DD/MM/YYYY'), TO_DATE('30/03/2013','DD/MM/YYYY'), TO_DATE('10/03/2013','DD/MM/YYYY'), 200);
+
+CREATE OR REPLACE PROCEDURE prc_atualiza_disponibilidade (
+    p_data IN DATE
+) AS 
+BEGIN
+    UPDATE cp4_veiculo a SET disponibilidade = 'S'
+    WHERE a.cod_veic IN (
+        SELECT b.cod_veic
+        FROM cp4_reserva b
+        WHERE b.dt_devolucao <= p_data
+    );
+END;
+
+CALL prc_atualiza_disponibilidade(TO_DATE('30/03/2013', 'DD/MM/YYYY'));
+SELECT * FROM cp4_veiculo;
+
+-- Function 1 - Crie uma função que receba o código de um veículo como parâmetro e retorne o total de dias que ele foi alugado, somando o intervalo entre a data de retirada e devolução de todas as suas reservas.
+
+-- Function 2 - Crie uma função que receba o código de uma marca como parâmetro e retorne a quantidade total de reservas feitas para veículos dessa marca
