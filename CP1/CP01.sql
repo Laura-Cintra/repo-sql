@@ -1,5 +1,8 @@
--- RM 558843
--- Laura de Oliveira Cintra
+-- 2TDSPJ
+
+-- RM558843 - Laura de Oliveira Cintra
+-- RM 558832 - Maria Eduarda Alves da Paixao
+-- RM 554456 - Vinicius Saes de Souza
 
 /*
 DROP TABLE cp4_reserva;
