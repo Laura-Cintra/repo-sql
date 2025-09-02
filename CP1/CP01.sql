@@ -255,3 +255,55 @@ BEGIN
 END;
 
 SELECT func_calc_reservas_marca(1) AS quantidade_reservas FROM DUAL;
+
+-- Trigger 1 - Crie uma trigger que impeça a inserção ou atualização de uma reserva na tabela cp4_reserva caso já exista uma reserva para o mesmo veículo dentro daquele período
+
+CREATE OR REPLACE TRIGGER trg_valida_reserva
+BEFORE INSERT OR UPDATE ON cp4_reserva
+FOR EACH ROW
+DECLARE
+    v_total_conflitos INTEGER;
+BEGIN
+    SELECT COUNT(*)
+    INTO v_total_conflitos
+    FROM cp4_reserva
+    WHERE cod_veic = :NEW.cod_veic
+      AND (
+           (:NEW.dt_retirada BETWEEN dt_retirada AND dt_devolucao)
+        OR (:NEW.dt_devolucao BETWEEN dt_retirada AND dt_devolucao)
+        OR (dt_retirada BETWEEN :NEW.dt_retirada AND :NEW.dt_devolucao)
+      )
+      -- Evita o conflito ao atualizar a própria reserva
+      AND (:NEW.cod_reserva IS NULL OR cod_reserva <> :NEW.cod_reserva);
+
+    IF v_total_conflitos > 0 THEN
+        RAISE_APPLICATION_ERROR(-20010, 'ERRO: Esse veículo já possui uma reserva dentro desse período!');
+    END IF;
+END;
+
+-- Criando reserva sem conflito
+INSERT INTO cp4_reserva (cod_reserva, cod_veic, cod_cli, dt_retirada, dt_devolucao, dt_reserva, valor) VALUES (11, 1002, 200, TO_DATE('01/06/2013','DD/MM/YYYY'), TO_DATE('05/06/2013','DD/MM/YYYY'), TO_DATE('31/05/2013','DD/MM/YYYY'), 250);
+
+-- Tentando inserir outra reserva para o mesmo veículo com datas sobrepostas
+-- 03/12/2012 entra dentro do período da reserva existente (cod_veic 1000 já tem reserva de 02/12/2012 a 05/12/2012)
+INSERT INTO cp4_reserva (cod_reserva, cod_veic, cod_cli, dt_retirada, dt_devolucao, dt_reserva, valor) VALUES (12, 1000, 203, TO_DATE('03/12/2012','DD/MM/YYYY'), TO_DATE('06/12/2012','DD/MM/YYYY'), TO_DATE('02/12/2012','DD/MM/YYYY'), 300);
+
+-- Trigger 2 - Crie uma trigger que calcule automaticamente o valor da reserva na tabela cp4_reserva sempre que uma reserva for inserida ou atualizada
+
+CREATE OR REPLACE TRIGGER trg_calcula_valor_reserva
+BEFORE INSERT OR UPDATE ON cp4_reserva
+FOR EACH ROW
+DECLARE
+    v_diaria NUMBER := 100; -- valor de exemplo
+BEGIN
+    IF :NEW.dt_devolucao IS NOT NULL AND :NEW.dt_retirada IS NOT NULL THEN
+        :NEW.valor := (:NEW.dt_devolucao - :NEW.dt_retirada) * v_diaria;
+    END IF;
+END;
+
+-- Inserindo uma reserva para calcular automaticamente o valor
+INSERT INTO cp4_reserva (cod_reserva, cod_veic, cod_cli, dt_retirada, dt_devolucao, dt_reserva) VALUES (30, 1003, 201, TO_DATE('10/06/2013','DD/MM/YYYY'), TO_DATE('13/06/2013','DD/MM/YYYY'), TO_DATE('09/06/2013','DD/MM/YYYY'));
+
+-- Verificando o valor calculado
+-- Nesse caso, o valor fica 300 porque o veículo ficou reservado por 3 dias
+SELECT cod_reserva, cod_veic, dt_retirada, dt_devolucao, valor FROM cp4_reserva WHERE cod_reserva = 30;
