@@ -42,3 +42,5 @@ BEGIN
     v_soma := pkg_alunos.func_contar_alunos();
     dbms_output.put_line('Total de alunos: ' || v_soma); 
 END;
+
+-- listar alunos com a quantidade (obrigatório ter cursor explícito) id_ nome_ idade_ total
