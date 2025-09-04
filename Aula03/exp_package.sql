@@ -1,4 +1,4 @@
--- DROP TABLE aluno;
+-- DROP TABLE alunos;
 
 SET SERVEROUTPUT ON;
 
@@ -11,6 +11,8 @@ CREATE TABLE alunos(
 CREATE OR REPLACE PACKAGE pkg_alunos AS 
     PROCEDURE proc_inserir_aluno(p_nome VARCHAR2, p_idade NUMBER);
     FUNCTION func_contar_alunos RETURN NUMBER;
+    PROCEDURE proc_listar_alunos;
+    PROCEDURE proc_listar_alunos_v2;
 END pkg_alunos;
 
 CREATE OR REPLACE PACKAGE BODY pkg_alunos AS
@@ -27,7 +29,33 @@ CREATE OR REPLACE PACKAGE BODY pkg_alunos AS
         BEGIN
             SELECT COUNT(*) INTO v_total FROM alunos;
         RETURN v_total;
-   END;
+    END;
+   
+    PROCEDURE proc_listar_alunos IS
+       CURSOR c_alunos IS
+        SELECT id_aluno, nome, idade FROM alunos ORDER BY id_aluno;
+        v_id alunos.id_aluno%TYPE;
+        v_nome alunos.nome%TYPE;
+        v_idade alunos.idade%TYPE;
+    BEGIN 
+        OPEN c_alunos;
+        LOOP 
+            FETCH c_alunos INTO v_id, v_nome, v_idade;
+            EXIT WHEN c_alunos%NOTFOUND;
+            dbms_output.put_line('ID: ' || v_id || ' | Nome: ' || v_nome || ' | Idade: ' || v_idade); 
+        END LOOP;
+        CLOSE c_alunos;
+    END proc_listar_alunos;
+    
+    PROCEDURE proc_listar_alunos_v2 IS
+           CURSOR cur_alunos IS
+            SELECT id_aluno, nome, idade FROM alunos ORDER BY id_aluno;
+    BEGIN
+        FOR x IN cur_alunos LOOP
+            dbms_output.put_line('ID: ' || x.id_aluno || ' | Nome: ' || x.nome || ' | Idade: ' || x.idade );
+        END LOOP;
+    END proc_listar_alunos_v2;
+
 END pkg_alunos;
 
 --- Usando o Pacote
@@ -36,11 +64,17 @@ BEGIN
     pkg_alunos.proc_inserir_aluno('Paulo', 23);
 END;
 
+BEGIN
+    pkg_alunos.proc_listar_alunos;
+    dbms_output.put_line('');
+    dbms_output.put_line('----------------------------------');
+    dbms_output.put_line('');
+    pkg_alunos.proc_listar_alunos_v2;
+END;
+
 DECLARE
     v_soma NUMBER;
 BEGIN
     v_soma := pkg_alunos.func_contar_alunos();
     dbms_output.put_line('Total de alunos: ' || v_soma); 
 END;
-
--- listar alunos com a quantidade (obrigatório ter cursor explícito) id_ nome_ idade_ total
