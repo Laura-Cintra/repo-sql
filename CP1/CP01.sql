@@ -284,6 +284,8 @@ END;
 -- Criando reserva sem conflito
 INSERT INTO cp4_reserva (cod_reserva, cod_veic, cod_cli, dt_retirada, dt_devolucao, dt_reserva, valor) VALUES (11, 1003, 200, TO_DATE('01/06/2013','DD/MM/YYYY'), TO_DATE('05/06/2013','DD/MM/YYYY'), TO_DATE('31/05/2013','DD/MM/YYYY'), 250);
 
+SELECT * FROM cp4_reserva;
+
 -- Tentando inserir outra reserva para o mesmo veículo com datas sobrepostas
 -- 03/12/2012 entra dentro do período da reserva existente (cod_veic 1000 já tem reserva de 02/12/2012 a 05/12/2012)
 INSERT INTO cp4_reserva (cod_reserva, cod_veic, cod_cli, dt_retirada, dt_devolucao, dt_reserva, valor) VALUES (12, 1000, 203, TO_DATE('03/12/2012','DD/MM/YYYY'), TO_DATE('06/12/2012','DD/MM/YYYY'), TO_DATE('02/12/2012','DD/MM/YYYY'), 300);
